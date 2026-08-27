@@ -8,27 +8,25 @@ help:
 	@echo "Available commands:"
 	@echo "  help     - Show this help message"
 	@echo "  lint     - Lint all markdown files"
-	@echo "  build    - Build the project (Placeholder)"
-	@echo "  test     - Run tests (Placeholder)"
-	@echo "  clean    - Clean build artifacts (Placeholder)"
+	@echo "  build    - Build the docs site (VitePress)"
+	@echo "  test     - Docs site smoke test (runs build)"
+	@echo "  clean    - Remove docs site build artifacts"
 	@echo ""
 
 lint:
 	@echo "Linting markdown files..."
 	@npm install -g markdownlint-cli
-	@markdownlint **/*.md
+	@markdownlint --config .github/lint_config.json '**/*.md'
 
 build:
-	@echo "Building the project..."
-	# Add your project build commands here
-	@echo "Build complete."
+	@echo "Building the docs site..."
+	@npm run build
 
 test:
-	@echo "Running tests..."
-	# Add your test commands here
-	@echo "Tests complete."
+	@echo "Docs site has no test suite; running build as smoke test..."
+	@npm run build
 
 clean:
-	@echo "Cleaning up build artifacts..."
-	# Add your clean commands here (e.g., rm -rf dist/ build/)
+	@echo "Cleaning up docs site artifacts..."
+	@rm -rf .vitepress/dist .vitepress/cache
 	@echo "Cleanup complete."

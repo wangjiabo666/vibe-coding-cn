@@ -20,7 +20,7 @@
 - 未经确认的大范围重构
 
 ### 敏感区域（禁止自动修改）
-- `.github/workflows/*.yml` - CI/CD 配置
+- `.github/workflows/*.yml` - CI/CD 配置（`deploy-docs.yml` 为文档站发布管线，2026-08 经任务明确要求新增）
 - `backups/gz/` - 历史备份存档
 - `.env*` 文件（如存在）
 
@@ -52,7 +52,7 @@ git push
 ## 3. Must-Run Commands（必须执行的命令清单）
 
 ### 环境要求
-- Node.js 16+（用于 markdownlint-cli）
+- Node.js 20+（markdownlint-cli 与文档站构建，VitePress 要求 ≥18）
 - Python 3.8+（用于 prompts-library 工具）
 - Git
 
@@ -62,6 +62,9 @@ git push
 |:---|:---|:---|
 | `make help` | 列出所有 Make 目标 | 无 |
 | `make lint` | 校验全仓库 Markdown | 需安装 markdownlint-cli |
+| `npm run dev` | 本地开发文档站（http://localhost:5173） | 先 `npm ci` 安装依赖 |
+| `npm run build` / `make build` | 构建文档站到 `.vitepress/dist` | 同上 |
+| `node scripts/check-pages.mjs` | 构建前离线校验全部页面可渲染 | 同上 |
 | `bash backups/一键备份.sh` | 创建完整项目备份 | 无 |
 | `python backups/快速备份.py` | Python 版备份脚本 | Python 3.8+ |
 | `cd libs/external/prompts-library && python main.py` | 提示词格式转换 | pandas, openpyxl, PyYAML |
@@ -87,11 +90,15 @@ git push
 - `i18n/en/` - 英文版本
 - `libs/common/` - 通用模块
 - `libs/external/` - 外部工具与依赖
+- `.vitepress/` - 文档站配置（VitePress：双语路由 rewrites、运行时侧边栏生成、内容安全兜底、死链基线）
+- `scripts/check-pages.mjs` - 文档站构建前离线全量页面校验
+- `package.json` / `package-lock.json` - Node 工程入口（文档站依赖，`npm ci` 安装）
 
 ### 依赖添加规则
 - 新增工具或库时记录安装方式、最小版本与来源
 - 外部依赖来源记录在 `libs/external/` 目录下
 - 引入第三方脚本需标明许可证与来源
+- vitepress ^1.6（来源 npm registry，`npm ci` 安装，版本锁定于 package-lock.json）——文档站构建核心，要求 Node ≥ 20
 
 ### 禁止行为
 - 禁止"顺手重构/大范围改动"除非任务明确要求
@@ -130,6 +137,11 @@ git push
 ├── CLAUDE.md                    # Claude 模型上下文（合并在本文件末尾）
 ├── GEMINI.md                    # Gemini 模型上下文
 ├── Makefile                     # 自动化脚本
+├── package.json                 # Node 工程入口（文档站依赖与脚本）
+├── .vitepress/                  # 文档站配置（VitePress）
+│   ├── config.mts               # 双语 locale / rewrites / 死链白名单
+│   └── utils/                   # 侧边栏生成、内容安全兜底、路由别名、死链基线
+├── scripts/                     # 站点辅助脚本（check-pages.mjs 离线校验）
 ├── LICENSE                      # MIT 许可证
 ├── CODE_OF_CONDUCT.md           # 行为准则
 ├── CONTRIBUTING.md              # 贡献指南
@@ -138,6 +150,7 @@ git push
 ├── .github/                     # GitHub 配置
 │   ├── workflows/               # CI/CD 工作流
 │   │   ├── ci.yml               # Markdown lint + link checker
+│   │   ├── deploy-docs.yml      # 文档站构建发布到 GitHub Pages
 │   │   ├── labeler.yml          # 自动标签
 │   │   └── welcome.yml          # 欢迎新贡献者
 │   ├── ISSUE_TEMPLATE/          # Issue 模板
@@ -212,6 +225,9 @@ git push
 | prompts-library 报错 | 缺少 Python 依赖 | `pip install pandas openpyxl PyYAML rich InquirerPy` |
 | CI link-checker 失败 | 文档中存在失效链接 | 检查并修复 Markdown 中的链接 |
 | 备份脚本权限不足 | Shell 脚本无执行权限 | `chmod +x backups/一键备份.sh` |
+| `npm run build` 死链报错 | 内容出现新的站内断链 | 先确认新形态再修复源内容，或登记进 `.vitepress/utils/dead-link-baseline.mjs` 基线 |
+| 构建报 Vue 解析失败（`[vite:vue]`） | 内容含伪 XML/未闭合标签/`{{ }}` 字面量 | 跑 `node scripts/check-pages.mjs` 定位问题页；兜底管线异常时人工修复源文件 |
+| Pages 部署 403/失败 | 仓库未开启 Pages Actions 源 | Settings → Pages → Source 选 GitHub Actions 后重跑 |
 
 ---
 

@@ -72,6 +72,21 @@
 
 ---
 
+## 🌐 文档网站
+
+本仓库 500+ 篇文档已发布为可直接浏览的文档站（基于 [VitePress](https://vitepress.dev/)），支持全文搜索与中英切换，部署于 GitHub Pages：
+
+```bash
+npm ci            # 安装依赖（需要 Node 20+）
+npm run dev       # 本地开发，默认 http://localhost:5173
+npm run build     # 构建产物输出到 .vitepress/dist
+npm run preview   # 本地预览构建产物
+```
+
+**部署机制**：推送到 `main` 且 `i18n/**` 或站点配置有变更时，[deploy-docs 工作流](./.github/workflows/deploy-docs.yml)自动构建并发布。首次启用需在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**，站点地址为 `https://<用户名>.github.io/vibe-coding-cn/`。
+
+---
+
 <details>
 <summary><strong>⚡ 5 分钟快速开始</strong></summary>
 

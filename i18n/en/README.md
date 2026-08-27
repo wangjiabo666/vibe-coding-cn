@@ -72,6 +72,21 @@ AI interpretation link for this repository: [zread.ai/tukuaiai/vibe-coding-cn](h
 
 ---
 
+## 🌐 Docs Website
+
+The 500+ documents in this repository are published as a browsable docs site (built with [VitePress](https://vitepress.dev/)), featuring full-text search and Chinese/English switching, deployed on GitHub Pages:
+
+```bash
+npm ci            # Install dependencies (Node 20+ required)
+npm run dev       # Local dev server, default http://localhost:5173
+npm run build     # Build output goes to .vitepress/dist
+npm run preview   # Preview the built site locally
+```
+
+**Deployment**: when changes to `i18n/**` or the site configuration are pushed to `main`, the [deploy-docs workflow](./.github/workflows/deploy-docs.yml) builds and publishes automatically. For first-time setup, select **GitHub Actions** under **Settings → Pages → Build and deployment → Source**; the site will be served at `https://<username>.github.io/vibe-coding-cn/`.
+
+---
+
 <details>
 <summary><strong>⚡ 5-Minute Quick Start</strong></summary>
 
