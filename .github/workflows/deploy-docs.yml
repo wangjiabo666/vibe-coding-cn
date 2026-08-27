@@ -1,0 +1,60 @@
+# 文档站部署：VitePress 构建后发布到 GitHub Pages
+#
+# 前置一次性配置（缺一不可，否则 deploy job 无权限发布）：
+#   仓库 Settings → Pages → Build and deployment → Source 选择 "GitHub Actions"
+#
+# 详见 README「文档网站」章节。
+
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'i18n/**'
+      - '.vitepress/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/check-pages.mjs'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch: {} # 手动触发：首次开启 Pages 后可立即发布，不必等内容变更
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只保留一次部署，新推送取消进行中的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build docs site
+        run: npm run build
+        env:
+          # GitHub Pages 项目页子路径
+          DOCS_BASE: '/vibe-coding-cn/'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .vitepress/dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
