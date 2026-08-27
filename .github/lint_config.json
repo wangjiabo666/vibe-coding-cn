@@ -1,0 +1,8 @@
+{
+  "//": "markdownlint 共享配置。存量 600+ 文档从未按 lint 规范编写（6万+ 风格类违规），因此 default=false：不做存量风格治理，只保留少量『当前零违规』的结构守门规则，用于拦截未来的内容损坏。CI ci.yml 的 markdown-lint job 依赖本文件存在（此前缺失导致该 job 从未通过）。",
+  "default": false,
+  "MD002": true,
+  "MD006": true,
+  "MD020": true,
+  "MD021": true
+}
