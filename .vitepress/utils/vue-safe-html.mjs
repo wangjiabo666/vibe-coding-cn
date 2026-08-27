@@ -1,4 +1,6 @@
-import { baseParse } from '@vue/compiler-dom'
+import { parse as vueDomParse } from '@vue/compiler-dom'
+import { existsSync } from 'node:fs'
+import { join, resolve as pathResolve } from 'node:path'
 
 /**
  * Vue 模板安全兜底（双层防线），防止 VitePress 构建期被存量坏内容炸掉。
@@ -24,10 +26,12 @@ const VOID_TAGS = new Set([
   'link', 'meta', 'param', 'source', 'track', 'wbr',
 ])
 
+// 必须用 compiler-dom 的 parse（带 DOM 默认配置：void 标签、原生标签集合等）；
+// 裸 baseParse 不认识 <img>/<br> 等空元素，会把合法 HTML 误判成缺闭合
 function parseErrorCount(html) {
   let errors = 0
   try {
-    baseParse(html, { onError: () => errors++ })
+    vueDomParse(html, { onError: () => errors++ })
   } catch {
     return 999
   }
@@ -40,21 +44,74 @@ function escapeTagChars(s) {
 
 // ---------------------------------------------------------------------------
 // 第一层：片段级规则
+//
+// v2 修正：markdown-it 产出的 html_block / html_inline 都是 CommonMark 合法
+// 标签语法（首页徽章 <p align>+<img>、<details> 折叠块等），开/闭标签经常被
+// 空行拆进不同片段——单片段"缺闭合标签"是正常形态，绝不能据此转义成纯文本
+// （否则徽章区变成一屏可见的原始标签）。合法性交给第二层文档级平衡修复。
+//
+// 本层只处理「文本 token 里残留的伪标签」：markdown-it 按规范把它们留在文本
+// 中（如 <输出格式>、a<b），但 Vue 词法器会尝试按标签解析并报错。
+// 判据：< 后紧跟 / ! ? 或 ASCII 字母才需要转义；< 后跟空格/CJK/数字是纯文本。
 // ---------------------------------------------------------------------------
 
-function snippetIsSafe(html) {
-  return parseErrorCount(html) === 0
+const TEXT_PSEUDO_TAG_RE = /<(?=[/?!A-Za-z])/g
+
+// 本地图片引用治理：Vite 会把相对路径图片（无论 md 图片语法还是 <img> 标签）
+// 转成模块导入，文件不存在就构建失败。按「源文件所在目录」判定：
+//   文件存在 → 补 ./ 前缀（裸路径缺前缀无法解析）让其正常导入渲染
+//   文件不存在 → 摘除引用（img 标签/图片 token 整个移除）
+// 外链（http/https//）、绝对路径、data URI、锚点一律不动。
+const IMG_SRC_RE = /(<img\b[^>]*?\bsrc=")([^"]*)(")/g
+
+const ROOT_DIR = pathResolve(process.cwd())
+
+function isLocalSrc(src) {
+  return Boolean(src) && !src.startsWith('/') && !src.startsWith('http://') &&
+    !src.startsWith('https://') && !src.startsWith('data:') && !src.startsWith('#') &&
+    !src.startsWith('mailto:')
+}
+
+// 返回 null 表示保留原样；否则返回新 src（补 ./）或 ''（文件不存在，摘除）
+function resolveLocalSrc(src, srcDir) {
+  if (!isLocalSrc(src)) return null
+  return existsSync(join(srcDir, src)) ? `./${src}` : ''
+}
+
+function fixHtmlImgSources(content, env) {
+  const relPath = env?.relativePath
+  if (!relPath) return content
+  const srcDir = join(ROOT_DIR, relPath, '..')
+  return content.replace(IMG_SRC_RE, (full, head, src, tail) => {
+    const next = resolveLocalSrc(src, srcDir)
+    return next === null ? full : `${head}${next}${tail}`
+  })
 }
 
 export function vueSafeHtmlRule(state) {
   const tokens = state.tokens
+  const env = state.env
+  const relPath = env?.relativePath
+  const srcDir = relPath ? join(ROOT_DIR, relPath, '..') : null
+
   for (const tok of tokens) {
-    if (tok.type === 'html_block') {
-      if (tok.content && !snippetIsSafe(tok.content)) tok.content = escapeTagChars(tok.content)
+    if (tok.type === 'html_block' && tok.content && tok.content.includes('<img')) {
+      tok.content = fixHtmlImgSources(tok.content, env)
     } else if (tok.type === 'inline' && tok.children) {
       for (const child of tok.children) {
-        if ((child.type === 'html_inline' || child.type === 'text') && child.content && !snippetIsSafe(child.content)) {
-          child.content = escapeTagChars(child.content)
+        if (child.type === 'html_inline' && child.content && child.content.includes('<img')) {
+          child.content = fixHtmlImgSources(child.content, env)
+        } else if (child.type === 'image' && srcDir) {
+          // Markdown 图片 token：文件不存在的引用整个摘除（导入会失败）
+          const src = child.attrGet('src') ?? ''
+          if (isLocalSrc(src) && !existsSync(join(srcDir, src))) {
+            child.type = 'text'
+            child.tag = ''
+            child.content = ''
+            child.children = []
+          }
+        } else if (child.type === 'text' && child.content && TEXT_PSEUDO_TAG_RE.test(child.content)) {
+          child.content = child.content.replace(TEXT_PSEUDO_TAG_RE, '&lt;')
         }
       }
     }

@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { createMarkdownRenderer } from 'vitepress'
-import { baseParse } from '@vue/compiler-dom'
+import { parse as vueDomParse } from '@vue/compiler-dom'
 import { vueSafeHtmlConfig } from '../.vitepress/utils/vue-safe-html.mjs'
 
 // 部分 VitePress 内部插件引用裸的全局 logger，独立脚本运行时不存在，垫一层
@@ -62,11 +62,11 @@ for (const abs of walkMd(join(ROOT, '.'))) {
   }
 
   const errors = []
-  // VitePress 构建抛出的 [vite:vue] 错误全部来自模板解析阶段（baseParse），这里等价复刻
+  // 与真实构建的 Vue 解析语义对齐：必须用 compiler-dom 的 parse（认识 void/原生标签）
   try {
-    baseParse(html, { onError: (e) => errors.push(e) })
+    vueDomParse(html, { onError: (e) => errors.push(e) })
   } catch {
-    /* 个别极端输入 baseParse 自身可能 throw，忽略——真实 build 同样会失败到 build 日志再查 */
+    /* 极端输入解析器自身可能 throw，忽略——真实 build 同样会失败，到 build 日志再查 */
   }
   if (errors.length > 0) {
     const err = errors[0]
