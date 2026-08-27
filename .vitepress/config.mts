@@ -126,14 +126,15 @@ export default defineConfig({
     build: {
       rollupOptions: {
         output: {
-          // 超长页面文件名已由 short-routes 的路由别名从源头解决；
-          // 这里只对杂项资源（图片/字体等）做兜底截断
+          // banner 改变每个 JS chunk 的内容 → 哈希全部换代：
+          // 用于击穿 Pages CDN 对旧 URL 缓存的 404（部署空窗期产生的缓存）
+          banner: '/* v2 */',
           assetFileNames(info) {
             const raw = (info.names && info.names[0]) || 'asset'
             const short = String(raw)
               .replace(/[^\w.-]+/g, '_')
               .slice(-48) // 保尾巴（扩展名与末段语义），防字节超限
-            return `assets/a-${short}-[hash][extname]`
+            return `assets/f-${short}-[hash][extname]`
           },
         },
       },
