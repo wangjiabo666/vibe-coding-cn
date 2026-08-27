@@ -67,6 +67,10 @@ libs/external/.tmux
 # mypy
 .mypy_cache/
 
+# Node / VitePress (docs site)
+node_modules/
+.vitepress/cache/
+
 # Backup
 backups/
 *.bak
