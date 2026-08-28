@@ -237,7 +237,9 @@ export function makeVueTemplateSafe(html) {
   fixed = escapeInterpolations(repairDocumentHtml(fixed))
   if (clean(fixed)) return fixed
 
-  return escapeEverything(html)
+  // L3 最后手段：全量尖括号转义。必须再叠加插值实体化 —— {{ }} 不是标签，
+  // escapeEverything 不会碰它；漏掉就会让 plugin-vue 把字面量当表达式解析炸掉构建
+  return escapeInterpolations(escapeEverything(html))
 }
 
 // ---------------------------------------------------------------------------

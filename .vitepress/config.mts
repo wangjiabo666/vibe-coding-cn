@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitepress'
-import type { Plugin } from 'vite'
 import { buildSidebar, findReadmeIndexCollisions } from './utils/sidebar'
-import { vueSafeHtmlConfig, makeVueTemplateSafe } from './utils/vue-safe-html.mjs'
+import { vueSafeHtmlConfig } from './utils/vue-safe-html.mjs'
 import { DEAD_LINK_BASELINE_URLS } from './utils/dead-link-baseline.mjs'
 import { finalizeRoute } from './utils/short-routes.mjs'
 
@@ -112,15 +111,6 @@ export default defineConfig({
 
   head: [['meta', { name: 'theme-color', content: '#3f7cd6' }]],
 
-  // 直通 @vitejs/plugin-vue：把插值定界符改成含私有区字符的"不可能序列"，
-  // 文档里的字面量 {{ }}（shell/模板示例）就不再被当表达式求值
-  vue: {
-    template: {
-      compilerOptions: {
-        delimiters: ['{{', '}}'],
-      },
-    },
-  },
 
   vite: {
     build: {
@@ -139,23 +129,6 @@ export default defineConfig({
         },
       },
     },
-    plugins: [
-      {
-        // 内容兜底的最后一道闸：Markdown 经 VitePress 转成 .md.vue 模板后，
-        // 对 <template> 块再做一次净化（标签栈重建 / 插值实体化 / 极端转义）。
-        // 不依赖 md 渲染实例是否被 patch 到，必经之路必被拦截。
-        name: 'vibe-safe-md-vue-template',
-        // 必须在 VitePress 自身的 md→vue 转换之后执行才能拿到模板产物
-        enforce: 'post',
-        transform(code: string, id: string) {
-          if (!id.endsWith('.vue') || !id.includes('.md')) return null
-          const m = code.match(/^([\s\S]*?<template[^>]*>)([\s\S]*?)(<\/template>[\s\S]*)$/)
-          if (!m) return null
-          const safe = makeVueTemplateSafe(m[2])
-          return safe === m[2] ? null : `${m[1]}${safe}${m[3]}`
-        },
-      } satisfies Plugin,
-    ],
   },
 
   markdown: {
